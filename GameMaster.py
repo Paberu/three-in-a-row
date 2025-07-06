@@ -81,8 +81,9 @@ class GameMaster:
 
 
 if __name__ == '__main__':
+    rows, columns, failed_attempts = map(int, input('Enter parameters of the game: rows and columns of the board and number of failed attempts.').split())
     game_master = GameMaster()
-    game_board = GameBoard()
+    game_board = GameBoard(rows=rows, columns=columns, failed_attempts=failed_attempts)
     while True:
         game_board.remove_accidental_coincidences()
         game_master.display(game_board)

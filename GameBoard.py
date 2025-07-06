@@ -1,12 +1,6 @@
 from typing import Final
-import configparser
-
 from Cell import Cell, EmptyCell
 
-COLUMNS: Final = 8
-ROWS: Final = 8
-BOARD_FIELDS: Final = COLUMNS * ROWS
-FAILED_ATTEMPTS: Final = 5
 
 class GameBoard:
     """ Класс игровой доски. Содержит статусы завершения важных операций, игровые счётчики и ячейки игрового поля,
@@ -27,7 +21,7 @@ class GameBoard:
     HAS_NOT_EMPTY_CELL: Final = 0
     HAS_EMPTY_CELL: Final = 1
 
-    def __init__(self):
+    def __init__(self, columns: int, rows: int, failed_attempts: int):
         """ Конструктор проводит инициализацию атрибутов. К сожалению, в Python атрибуты задаются и инициализируются
         в момент вызова конструктора.
 
@@ -37,24 +31,29 @@ class GameBoard:
 
         Двумерный массив, содержащий необходимое количество ячеек Cell.
         """
+        self.COLUMNS = columns
+        self.ROWS = rows
+        self.BOARD_FIELDS = self.COLUMNS * self.ROWS
+        self.FAILED_ATTEMPTS = failed_attempts
+
         self._match_status = self.MATCH_NIL
         self._has_empty_cell = self.HAS_NOT_EMPTY_CELL
         self._counters = {'moves': 0,
                           'score': 0,
                           'failed_attempts': 0}
-        self._board = [[Cell() for _ in range(COLUMNS)] for _ in range(ROWS)]  # переход на двумерный массив
+        self._board = [[Cell() for _ in range(self.COLUMNS)] for _ in range(self.ROWS)]  # переход на двумерный массив
 
     def __str__(self):
         """ Перевод содержимого в строковое выражение для передачи для вывода в консоль
 
         :return: Строка для вывода содержимого доски со всеми индексами и необходимым переносами.
         """
-        str_board = '    ' + ' '.join(str(i) for i in range(COLUMNS)) + '\n'  # Индексы столбцов
+        str_board = '    ' + ' '.join(str(i) for i in range(self.COLUMNS)) + '\n'  # Индексы столбцов
         str_board += '\n'
         for i, row in enumerate(self._board):
             str_board+= f'{chr(i + 65)}   ' + ' '.join([str(cell) for cell in row]) + f'   {chr(i + 65)}\n'  # Индексы строк и ряды значений
         str_board += '\n'
-        str_board += '    ' + ' '.join(str(i) for i in range(COLUMNS)) + '\n'  # Индексы столбцов
+        str_board += '    ' + ' '.join(str(i) for i in range(self.COLUMNS)) + '\n'  # Индексы столбцов
         return str_board
 
     # КОМАНДЫ
@@ -65,13 +64,13 @@ class GameBoard:
         """
         cells_to_collapse = set()
         # проверить по строкам
-        for y in range(ROWS):
-            for x in range(COLUMNS - 2):
+        for y in range(self.ROWS):
+            for x in range(self.COLUMNS - 2):
                 if self._board[y][x] == self._board[y][x + 1] == self._board[y][x + 2]:
                     cells_to_collapse.update(((y, x), (y, x + 1), (y, x + 2)))
         # проверить по столбцам
-        for y in range(ROWS - 2):
-            for x in range(COLUMNS):
+        for y in range(self.ROWS - 2):
+            for x in range(self.COLUMNS):
                 if self._board[y][x] == self._board[y + 1][x] == self._board[y + 2][x]:
                     cells_to_collapse.update(((y, x), (y + 1, x), (y + 2, x)))
         # очистить ячейки и начислить очки
@@ -89,12 +88,12 @@ class GameBoard:
         """
         while self._has_empty_cell == self.HAS_EMPTY_CELL:
             count_empty_cells = 0
-            for x in range(COLUMNS):
+            for x in range(self.COLUMNS):
                 if self._board[0][x].get_value() == ' ':
                     self._board[0][x] = Cell()
 
-            for y in range(ROWS - 1):
-                for x in range(COLUMNS):
+            for y in range(self.ROWS - 1):
+                for x in range(self.COLUMNS):
                     if self._board[y + 1][x].get_value() == ' ':
                         self._swap_cells( (y, x, y + 1, x) )
                         count_empty_cells += 1
@@ -165,7 +164,7 @@ class GameBoard:
 
         :return: Булево значение - превысил ли счётчик ошибок допустимое количество ошибочных ходов.
         """
-        return self._counters['failed_attempts'] >= FAILED_ATTEMPTS
+        return self._counters['failed_attempts'] >= self.FAILED_ATTEMPTS
 
     def cells_are_equal(self, trio):
         """ Проверяет, равны ли значения в указанных трёх ячейках
@@ -207,8 +206,7 @@ class GameBoard:
         first, second = coordinates.split()
         return ord(first[0]) - 65, int(first[1:]), ord(second[0]) - 65, int(second[1:])
 
-    @staticmethod
-    def validate_coordinates(y1, x1, y2, x2):
+    def validate_coordinates(self, y1, x1, y2, x2):
         """ Проверяет координаты на соответствие трём условиям: ячейки должны быть соседними, горизонтальные координаты
         должны быть в пределах от 0 до ROWS, вертикальные координаты должны быть в пределах от 0 до COLUMNS.
 
@@ -219,12 +217,11 @@ class GameBoard:
         :return:
         """
         if_neighbor_cells = abs(y1 - y2) == 1 and x1 == x2 or abs(x1 - x2) == 1 and y1 == y2
-        if_y_in_borders = 0 <= y1 < ROWS and 0 <= y2 < ROWS
-        if_x_in_borders = 0 <= x1 < COLUMNS and 0 <= x2 < COLUMNS
+        if_y_in_borders = 0 <= y1 < self.ROWS and 0 <= y2 < self.ROWS
+        if_x_in_borders = 0 <= x1 < self.COLUMNS and 0 <= x2 < self.COLUMNS
         return if_neighbor_cells and if_y_in_borders and if_x_in_borders
 
-    @staticmethod
-    def get_indexes_to_check(y, x):
+    def get_indexes_to_check(self, y, x):
         """ Подставляет значения y и x в заранее подготовленный список, представляющий собой набор списков вида "три
         пары целочисленных значений", являющиеся координатами трёх соседних по горизонтали или вертикали ячеек.
 
@@ -246,7 +243,7 @@ class GameBoard:
                    [[y - 2, x], [y - 1, x], [y, x]],
                    [[y - 1, x], [y, x], [y + 1, x]],
                    [[y, x], [y + 1, x], [y + 2, x]]]
-        return [trio for trio in indexes if all(0 <= pair[0] < ROWS and 0 <= pair[1] < COLUMNS for pair in trio)]
+        return [trio for trio in indexes if all(0 <= pair[0] < self.ROWS and 0 <= pair[1] < self.COLUMNS for pair in trio)]
 
     def has_match(self):
         """ Проверяет, было ли совпадение, и штрафует, если такового не было.
